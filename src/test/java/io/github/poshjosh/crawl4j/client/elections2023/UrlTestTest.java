@@ -1,14 +1,14 @@
 package io.github.poshjosh.crawl4j.client.elections2023;
 
-import org.junit.jupiter.api.Test;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.UrlTest;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PresidentialResultFollowUrlTestTest {
+class UrlTestTest {
 
-    private final PresidentialResultFollowUrlTest followUrlTest = new PresidentialResultFollowUrlTest();
+    private final UrlTest urlTest = new UrlTest();
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -21,7 +21,7 @@ class PresidentialResultFollowUrlTestTest {
             "https://inecelectionresults.ng/elections/63f8f25b594e164f8146a213/pu/63f8f28b594e164f8146a3b5/document",
     })
     void shouldAcceptValidUrl(String url) {
-        assertTrue(followUrlTest.test(url), "URL: " + url);
+        assertTrue(urlTest.test(url), "URL: " + url);
     }
 
     @ParameterizedTest
@@ -30,6 +30,6 @@ class PresidentialResultFollowUrlTestTest {
             "https://abc/pres/elections/63f8f25b594e164f8146a213?type=pres",
     })
     void shouldRejectInvalidUrl(String url) {
-        assertFalse(followUrlTest.test(url), "URL: " + url);
+        assertFalse(urlTest.test(url), "URL: " + url);
     }
 }

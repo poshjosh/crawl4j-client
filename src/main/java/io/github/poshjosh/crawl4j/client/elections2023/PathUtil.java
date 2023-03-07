@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public final class PathUtil {
@@ -22,17 +23,17 @@ public final class PathUtil {
 
     private static final Pattern PATH_PATTERN = Pattern.compile("[^a-zA-Z_0-9-./]");
 
-    public static boolean save(String url, byte [] data) {
+    public static Optional<Path> save(String url, byte [] data) {
         Path path = null;
         try {
             path = PathUtil.createPathForUrl(url);
-            Files.write(path, data,
+            path = Files.write(path, data,
                     StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             logger.info("Saved: {}", url);
-            return true;
+            return Optional.of(path);
         } catch (IOException iox) {
             logger.error("Failed to write file: {}, reason: {}", path == null ? url : path, iox.toString());
-            return false;
+            return Optional.empty();
         }
     }
 

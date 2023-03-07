@@ -1,4 +1,4 @@
-package io.github.poshjosh.crawl4j.client.elections2023;
+package io.github.poshjosh.crawl4j.client.elections2023.presidential;
 
 import io.github.poshjosh.crawl4j.client.StringUtil;
 

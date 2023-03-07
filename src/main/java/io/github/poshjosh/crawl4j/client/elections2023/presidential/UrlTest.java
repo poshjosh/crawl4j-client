@@ -1,12 +1,12 @@
-package io.github.poshjosh.crawl4j.client.elections2023;
+package io.github.poshjosh.crawl4j.client.elections2023.presidential;
 
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-public class PresidentialResultFollowUrlTest implements Predicate<String> {
+public class UrlTest implements Predicate<String> {
     private final static Pattern FILTERS = Pattern.compile(".*(\\.(css|js|gif|jpg"
             + "|png|mp3|mp4|zip|gz|ico))$");
-    public PresidentialResultFollowUrlTest() { }
+    public UrlTest() { }
 
     @Override
     public boolean test(String s) {

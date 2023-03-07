@@ -1,7 +1,11 @@
 package io.github.poshjosh.crawl4j.client.net;
 
+import io.github.poshjosh.crawl4j.client.CrawlStat;
 import io.github.poshjosh.crawl4j.client.StringUtil;
 import io.github.poshjosh.crawl4j.client.Timings;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.ElectionResultDownloader;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.ElementClickableConditions;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.Urls;
 import org.apache.http.HttpVersion;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.entity.ContentType;
@@ -11,10 +15,10 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -23,21 +27,22 @@ public class SeleniumHttpClient implements AutoCloseable{
     private static final Logger logger = LoggerFactory.getLogger(SeleniumHttpClient.class);
 
     private final WebDriver webDriver;
-    private final ExpectedCondition<WebElement> pageClickableCondition;
+    private final ExpectedCondition<List<WebElement>> pageClickableCondition;
 
-    public SeleniumHttpClient() {
-        webDriver = new ChromeDriver();
-        webDriver.manage().timeouts().implicitlyWait(Duration.ofMillis(Timings.PAGELOAD_TIMEOUT_MILLIS));
-        pageClickableCondition = new ElementClickableConditions();
-        //WebDriverWait wait = new WebDriverWait(webDriver, Duration.ofSeconds(Timings.PAGELOAD_TIMEOUT_MILLIS));
-        //wait.until(pageClickableCondition);
+    private final ElectionResultDownloader downloader;
+
+    public SeleniumHttpClient(CrawlStat crawlStat) {
+        this.webDriver = new ChromeDriver();
+        this.webDriver.manage().timeouts().implicitlyWait(Duration.ofMillis(Timings.PAGELOAD_TIMEOUT_MILLIS));
+        this.pageClickableCondition = new ElementClickableConditions();
+        this.downloader = new ElectionResultDownloader(webDriver, crawlStat);
     }
 
     public CloseableHttpResponse get(String url) throws UnsupportedEncodingException {
 
         webDriver.get(url);
 
-        pageClickableCondition.apply(webDriver);
+        List<WebElement> elements = pageClickableCondition.apply(webDriver);
 
         String responseString = webDriver.getPageSource();
 
@@ -55,6 +60,13 @@ public class SeleniumHttpClient implements AutoCloseable{
         response.setEntity(new StringEntity(responseString, ContentType.TEXT_HTML.getMimeType(), StandardCharsets.UTF_8.name()));
         response.setHeader("Content-Length", ""+responseString.length());
         response.setLocale(Locale.ENGLISH);
+
+        if (Urls.UrlType.PollingUnit.equals(Urls.getType(url))) {
+            if (elements.isEmpty()) {
+                elements = pageClickableCondition.apply(webDriver);
+            }
+            downloader.download(elements);
+        }
 
         return response;
     }

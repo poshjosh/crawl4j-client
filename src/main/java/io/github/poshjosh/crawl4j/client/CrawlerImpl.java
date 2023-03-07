@@ -18,17 +18,17 @@ public class CrawlerImpl extends WebCrawler {
     private final Predicate<String> visitUrlTest;
     private final Predicate<String> downloadUrlTest;
 
-    public CrawlerImpl(Predicate<String> followUrlTest, Predicate<String> visitUrlTest, Predicate<String> downloadUrlTest) {
+    public CrawlerImpl(CrawlStat crawlStat, Predicate<String> followUrlTest, Predicate<String> visitUrlTest, Predicate<String> downloadUrlTest) {
         this.followUrlTest = Objects.requireNonNull(followUrlTest);
         this.visitUrlTest = Objects.requireNonNull(visitUrlTest);
         this.downloadUrlTest = Objects.requireNonNull(downloadUrlTest);
-        this.crawlStat = new CrawlStat();
+        this.crawlStat = Objects.requireNonNull(crawlStat);
     }
 
     @Override
     protected boolean shouldFollowLinksIn(WebURL url) {
         final boolean shouldFollowLinksIn = followUrlTest.test(getHref(url));
-        //logger.info("Should follow links in: {}, {}", shouldFollowLinksIn, url);
+        logger.trace("Should follow links in: {}, {}", shouldFollowLinksIn, url);
         return shouldFollowLinksIn;
     }
 
@@ -41,7 +41,7 @@ public class CrawlerImpl extends WebCrawler {
     @Override
     public boolean shouldVisit(Page referringPage, WebURL url) {
         final boolean shouldVisit = visitUrlTest.test(getHref(url));
-        //logger.info("Should visit: {}, {}", shouldVisit, url);
+        logger.trace("Should visit: {}, {}", shouldVisit, url);
         return shouldVisit;
     }
 
@@ -57,7 +57,7 @@ public class CrawlerImpl extends WebCrawler {
         String url = page.getWebURL().getURL();
         crawlStat.setLastVisitUrl(url);
 
-        crawlStat.incTotalProcessedPages();
+        crawlStat.incTotalProcessedPages(1);
 
         ParseData parseData = page.getParseData();
         if (parseData instanceof HtmlParseData) {
@@ -79,8 +79,9 @@ public class CrawlerImpl extends WebCrawler {
             return;
         }
 
-        if (PathUtil.save(url, page.getContentData())) {
-            crawlStat.incTotalFilesDownloaded();
+        byte [] bytesToSave = page.getContentData();
+        if (PathUtil.save(url, bytesToSave).isPresent()) {
+            crawlStat.recordSavedBytes(bytesToSave);
         }
     }
 
@@ -104,8 +105,6 @@ public class CrawlerImpl extends WebCrawler {
     }
 
     public void dumpCrawlStat() {
-        logger.info("{}\tPages: {}, Downloaded: {}, Links: {}, Last visit: {}",
-                getMyId(), crawlStat.getTotalProcessedPages(), crawlStat.getTotalFilesDownloaded(),
-                crawlStat.getTotalLinks(), crawlStat.getLastVisitUrl());
+        logger.info("{}\t{}", getMyId(), crawlStat);
     }
 }

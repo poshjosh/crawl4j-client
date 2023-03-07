@@ -25,10 +25,10 @@ import java.util.function.Predicate;
 public class PageFetcherImpl extends PageFetcher {
     private final Predicate<String> fetchJavascript;
     private final SeleniumHttpClient seleniumHttpClient;
-    public PageFetcherImpl(CrawlConfig config, Predicate<String> fetchJavascript) {
+    public PageFetcherImpl(CrawlConfig config, CrawlStat crawlStat, Predicate<String> fetchJavascript) {
         super(config);
         this.fetchJavascript = Objects.requireNonNull(fetchJavascript);
-        this.seleniumHttpClient = new SeleniumHttpClient();
+        this.seleniumHttpClient = new SeleniumHttpClient(crawlStat);
     }
 
     public PageFetchResult fetchPage(WebURL webUrl)

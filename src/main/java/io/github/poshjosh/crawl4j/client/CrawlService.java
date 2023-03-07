@@ -7,7 +7,9 @@ import edu.uci.ics.crawler4j.fetcher.PageFetcher;
 import edu.uci.ics.crawler4j.parser.Parser;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtConfig;
 import edu.uci.ics.crawler4j.robotstxt.RobotstxtServer;
-import io.github.poshjosh.crawl4j.client.elections2023.*;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.DownloadLinkTest;
+import io.github.poshjosh.crawl4j.client.elections2023.presidential.UrlTest;
+import io.github.poshjosh.crawl4j.client.elections2023.PathUtil;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,18 +23,18 @@ public class CrawlService {
     private final Predicate<String> downloadLinkTest;
 
     public CrawlService() {
-        followUrlTest = new PresidentialResultFollowUrlTest();
+        followUrlTest = new UrlTest();
 
         downloadLinkTest = new DownloadLinkTest();
     }
 
     public CrawlController start(String userAgent, Set<String> seedUrls, int numberOfCrawlers) throws Exception{
 
-        CrawlController crawlController = createController(userAgent);
+        CrawlStat crawlStat = new CrawlStat();
 
-        seedUrls.stream().forEach(crawlController::addSeed);
+        CrawlController crawlController = createController(crawlStat, userAgent, seedUrls);
 
-        CrawlController.WebCrawlerFactory<WebCrawler> factory = () -> new CrawlerImpl(followUrlTest, followUrlTest, downloadLinkTest);
+        CrawlController.WebCrawlerFactory<WebCrawler> factory = () -> new CrawlerImpl(crawlStat, followUrlTest, followUrlTest, downloadLinkTest);
 
         // Start the crawl.
         // This is a blocking operation, meaning that your code
@@ -42,44 +44,47 @@ public class CrawlService {
         return crawlController;
     }
 
-    public CrawlController startNonBlocking(String userAgent, Set<String> seedUrls, int numberOfCrawlers, long timeoutMillis)
-            throws Exception {
-
-        CrawlController crawlController = startNonBlocking(userAgent, seedUrls, numberOfCrawlers);
-
-        Thread.sleep(timeoutMillis);
-
-        // Send the shutdown request and then wait for finishing
-        crawlController.shutdown();
-        crawlController.waitUntilFinish();
-
-        return crawlController;
-    }
-
     public CrawlController startNonBlocking(String userAgent, Set<String> seedUrls, int numberOfCrawlers)
             throws Exception{
 
-        CrawlController crawlController = createController(userAgent);
+        CrawlStat crawlStat = new CrawlStat();
 
-        seedUrls.stream().forEach(crawlController::addSeed);
+        CrawlController crawlController = createController(crawlStat, userAgent, seedUrls);
 
-        CrawlController.WebCrawlerFactory<WebCrawler> factory = () -> new CrawlerImpl(followUrlTest, followUrlTest, downloadLinkTest);
+        CrawlController.WebCrawlerFactory<WebCrawler> factory = () -> new CrawlerImpl(crawlStat, followUrlTest, followUrlTest, downloadLinkTest);
 
         crawlController.startNonBlocking(factory, numberOfCrawlers);
 
         return crawlController;
     }
 
-    public CrawlController createController(String userAgent) throws Exception{
-        CrawlConfig config = new CrawlConfigImpl(userAgent);
+    public CrawlController createController(CrawlStat crawlStat, String userAgent, Set<String> seedUrls) throws Exception{
+        CrawlConfig config = new CrawlConfig();
+        customize(config, userAgent);
         Path path = Paths.get(config.getCrawlStorageFolder());
         PathUtil.createDirIfNotExisting(path);
 
         // Instantiate the controller for this crawl.
-        PageFetcher pageFetcher = new PageFetcherImpl(config, followUrlTest);
-        Parser parser = new ParserImpl(config);
+        PageFetcher pageFetcher = new PageFetcherImpl(config, crawlStat, followUrlTest);
+        Parser parser = new Parser(config);
         RobotstxtConfig robotstxtConfig = new RobotstxtConfigImpl(userAgent);
         RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
-        return new CrawlControllerImpl(config, pageFetcher, parser, robotstxtServer);
+        CrawlController controller = new CrawlController(config, pageFetcher, parser, robotstxtServer);
+        seedUrls.stream().forEach(controller::addSeed);
+        return controller;
+    }
+
+    private void customize(CrawlConfig crawlConfig, String userAgent) {
+        crawlConfig.setCrawlStorageFolder(PathUtil.OWN_STORAGE_FOLDER_DATA);
+        crawlConfig.setIncludeBinaryContentInCrawling(true);
+        crawlConfig.setIncludeHttpsPages(true);
+        crawlConfig.setMaxDownloadSize(100_000_000);
+        crawlConfig.setMaxPagesToFetch(5_000); // Default value
+        crawlConfig.setPolitenessDelay(Timings.INTERVAL_MILLIS);
+        crawlConfig.setRespectNoFollow(false);
+        crawlConfig.setRespectNoIndex(false);
+        crawlConfig.setResumableCrawling(true);
+        //c.setShutdownOnEmptyQueue(false); // We have our shutdown command
+        crawlConfig.setUserAgentString(userAgent);
     }
 }
